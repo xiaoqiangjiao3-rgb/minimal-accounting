@@ -27,58 +27,75 @@
                 </div>
             </div>
 
-            <!-- 收支汇总 -->
-            <div class="summary-cards">
-                <div class="summary-card income-card">
-                    <div class="summary-label">收入</div>
-                    <div class="summary-amount" id="summary-income">¥ 0.00</div>
+            <div class="input-card" id="input-card">
+                <!-- 录音波形动画条 -->
+                <div id="recording-wave" class="recording-wave hidden">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
                 </div>
-                <div class="summary-card expense-card">
-                    <div class="summary-label">支出</div>
-                    <div class="summary-amount" id="summary-expense">¥ 0.00</div>
-                </div>
-                <div class="summary-card balance-card">
-                    <div class="summary-label">结余</div>
-                    <div class="summary-amount" id="summary-balance">¥ 0.00</div>
-                </div>
-            </div>
 
-            <div class="input-card">
+                <!-- 录音状态提示 - 整合到输入区域 -->
+                <div id="recording-status" class="recording-status hidden">
+                    <div class="recording-indicator">
+                        <span class="recording-dot"></span>
+                        <span class="recording-text">正在聆听...</span>
+                    </div>
+                    <div id="recording-preview" class="recording-preview"></div>
+                </div>
+
                 <!-- 收入/支出切换 -->
                 <div class="type-toggle-row">
                     <button class="type-toggle-btn active" id="type-auto">自动</button>
                     <button class="type-toggle-btn" id="type-expense">支出</button>
                     <button class="type-toggle-btn" id="type-income">收入</button>
                 </div>
+
+                <!-- 输入行 - 整合语音按钮 -->
                 <div class="input-row">
-                    <input
-                        type="text"
-                        id="input-field"
-                        class="apple-input"
-                        placeholder="午饭麦当劳 42"
-                        autocomplete="off"
-                    >
-                    <button id="voice-btn" class="icon-btn" aria-label="语音输入">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <!-- 极简线条麦克风图标 -->
+                    <button id="voice-btn" class="voice-btn-inline" aria-label="语音输入">
+                        <svg class="mic-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                             <line x1="12" y1="19" x2="12" y2="23"/>
                             <line x1="8" y1="23" x2="16" y2="23"/>
                         </svg>
                     </button>
+                    <input
+                        type="text"
+                        id="input-field"
+                        class="apple-input"
+                        placeholder="或直接打字输入"
+                        autocomplete="off"
+                    >
                     <button id="submit-btn" class="submit-btn">记</button>
+                    <!-- 极简线条设置图标 -->
+                    <button id="manage-cats-btn" class="settings-btn-inline" title="管理分类">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
                 </div>
+
                 <div id="preview" class="preview-area hidden"></div>
-                <div class="quick-cats-row">
-                    <div class="quick-cats" id="quick-cats">
-                        <button class="cat-chip" data-cat="餐饮">🍲 餐饮</button>
-                        <button class="cat-chip" data-cat="交通">🚘 交通</button>
-                        <button class="cat-chip" data-cat="购物">🛍 购物</button>
-                        <button class="cat-chip" data-cat="娱乐">🎮 娱乐</button>
-                        <button class="cat-chip" data-cat="居住">🏠 居住</button>
-                        <button class="cat-chip" data-cat="其他">📦 其他</button>
-                    </div>
-                    <button id="manage-cats-btn" class="manage-cats-btn" title="管理分类">⚙</button>
+                <div class="quick-cats">
+                    <button class="cat-chip" data-cat="餐饮">🍲 餐饮</button>
+                    <button class="cat-chip" data-cat="交通">🚗 交通</button>
+                    <button class="cat-chip" data-cat="购物">🛍 购物</button>
+                    <button class="cat-chip" data-cat="娱乐">🎮 娱乐</button>
+                    <button class="cat-chip" data-cat="居住">🏠 居住</button>
+                    <button class="cat-chip" data-cat="其他">📦 其他</button>
                 </div>
             </div>
 
@@ -94,7 +111,6 @@
                 <h1 class="page-title">图表</h1>
             </header>
 
-            <!-- 时间快捷筛选 -->
             <div class="chart-filter-row">
                 <button class="filter-chip active" data-filter="month">本月</button>
                 <button class="filter-chip" data-filter="week">本周</button>
@@ -122,13 +138,11 @@
                 </div>
             </div>
 
-            <!-- 支出排行榜 -->
             <div class="chart-card">
                 <h2 class="section-label">支出排行榜</h2>
                 <div id="ranking-list-expense" class="ranking-list"></div>
             </div>
 
-            <!-- 收入排行榜 -->
             <div class="chart-card">
                 <h2 class="section-label">收入排行榜</h2>
                 <div id="ranking-list-income" class="ranking-list"></div>
@@ -142,7 +156,6 @@
                 <button class="settings-gear" id="settings-gear-btn" title="设置">&#9881;</button>
             </header>
 
-            <!-- 财务健康评估卡片 -->
             <div class="health-card" id="health-card">
                 <div class="health-header" id="health-header">
                     <div class="health-title-row">
@@ -173,13 +186,7 @@
                     <span class="goal-empty-hint">设定一个财务目标开始规划</span>
                 </div>
                 <div class="goal-input-row">
-                    <input
-                        type="text"
-                        id="goal-input"
-                        class="apple-input"
-                        placeholder="我想3个月存2万"
-                        autocomplete="off"
-                    >
+                    <input type="text" id="goal-input" class="apple-input" placeholder="我想3个月存2万" autocomplete="off">
                     <button id="goal-submit-btn" class="submit-btn">设</button>
                 </div>
             </div>
@@ -243,7 +250,6 @@
             <div class="cat-list" id="cat-list"></div>
             <button class="cat-add-btn" id="add-cat-btn">+ 添加分类</button>
 
-            <!-- 编辑表单 -->
             <div class="cat-edit-form" id="cat-edit-form">
                 <h3 class="cat-form-title" id="cat-form-title">添加分类</h3>
                 <div class="cat-form-field">

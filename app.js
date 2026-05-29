@@ -366,17 +366,71 @@ class AccountingApp {
         }
     }
 
+    // 提取中文数字
+    parseChineseNumber(text) {
+        var cnNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000,'万':10000};
+        var result = 0;
+        var temp = 0;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text[i];
+            if (cnNum[ch]) {
+                if (cnNum[ch] >= 10) {
+                    temp = (temp || 1) * cnNum[ch];
+                    if (cnNum[ch] >= 100) {
+                        result += temp;
+                        temp = 0;
+                    }
+                } else {
+                    temp = (temp || 0) + cnNum[ch];
+                }
+            } else {
+                if (temp > 0) {
+                    result += temp;
+                    temp = 0;
+                }
+            }
+        }
+        if (temp > 0) result += temp;
+        return result || 0;
+    }
+
     parseInput(input) {
-        var amountMatch = input.match(/(\d+\.?\d*)\s*(块|元|￥|¥)?/);
-        if (!amountMatch) {
+        // 先尝试提取阿拉伯数字
+        var amountMatch = input.match(/(\d+\.?\d*)\s*(块|元|￥|¥|圆)?/);
+        var amount = 0;
+        var amountStr = '';
+        if (amountMatch) {
+            amount = parseFloat(amountMatch[1]);
+            amountStr = amountMatch[0];
+        } else {
+            // 尝试提取中文数字
+            var chineseNum = this.parseChineseNumber(input);
+            if (chineseNum > 0) {
+                amount = chineseNum;
+                // 找到中文数字在原文中的位置
+                var cnPattern = input.match(/(零|一|二|三|四|五|六|七|八|九|十|百|千|万|两)+/);
+                if (cnPattern) amountStr = cnPattern[0];
+            }
+        }
+
+        if (amount === 0) {
             this.showPreview('未识别到金额，请包含数字');
             return null;
         }
-        var amount = parseFloat(amountMatch[1]);
-        var desc = input.replace(/(\d+\.?\d*\s*(块|元|￥|¥)?)/, '').trim();
-        if (!desc) desc = input.replace(/(\d+\.?\d*)/, '').trim() || '未命名';
-        var category = this.autoClassify(desc);
-        var type = this.manualType || (this.isIncome(desc) ? 'income' : 'expense');
+
+        // 提取描述：去掉金额部分
+        var desc = input.replace(amountStr, '').trim();
+        if (!desc) desc = input.replace(/(\d+\.?\d*\s*(块|元|￥|¥|圆)?)/, '').trim() || '未命名';
+
+        // 语义分析：判断收支类型
+        var type = this.analyzeType(input);
+
+        // 语义分析：自动分类
+        var category = this.analyzeCategory(input, type);
+
+        // 提取备注信息
+        var note = this.extractNote(input, amountStr, category);
+
         return {
             id: Date.now(),
             desc: desc,
@@ -384,56 +438,174 @@ class AccountingApp {
             type: type,
             category: category,
             date: new Date().toISOString(),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            note: note
         };
     }
 
-    autoClassify(desc) {
-        var d = desc.toLowerCase();
+    // 语义分析：判断收支类型（上下文感知）
+    analyzeType(text) {
+        // 如果手动指定了类型，直接返回
+        if (this.manualType) return this.manualType;
+
+        var d = text.toLowerCase();
+
+        // === 第一层：上下文句型匹配（整句语义，不仅看单词） ===
+        // 收入句型：XX发了/到账/收到XX
+        if (/到账|入账|进账/.test(d)) return 'income';
+        if (/(?:工资|奖金|提成|报销|补贴|津贴|稿费|分红).*\d/.test(d)) return 'income';
+        if (/发了.*(?:工资|奖金|钱|补贴|红包)/.test(d)) return 'income';
+        if (/收到.*(?:转账|红包|退款|汇款)/.test(d)) return 'income';
+        if (/(?:挣|赚|存|攒)了.*\d/.test(d)) return 'income';
+        if (/(?:理财|基金|股票).*(?:赚|收益|到账)/.test(d)) return 'income';
+        if (/(?:中奖|返现|返利|回款)/.test(d)) return 'income';
+        if (/别人.*(?:给|转|发).*钱/.test(d)) return 'income';
+        if (/礼金|红包.*收/.test(d)) return 'income';
+
+        // 收入语境关键词（强信号）
+        var incomeKeywords = [
+            '发了', '到账', '收到', '挣了', '赚了', '奖金', '工资', '报销', '退款',
+            '红包', '补贴', '津贴', '稿费', '租金收入', '利息收入', '理财收益', '回款',
+            '返现', '返利', '提成', '分红', '礼金', '外快', '兼职收入', '入账', '进账'
+        ];
+        for (var i = 0; i < incomeKeywords.length; i++) {
+            if (d.indexOf(incomeKeywords[i]) !== -1) return 'income';
+        }
+
+        // === 第二层：支出句型匹配（整句语义） ===
+        // 支出句型：XX买了/花了/付了XX
+        if (/(?:买|购)了.*\d/.test(d)) return 'expense';
+        if (/(?:花|付|交)了.*\d/.test(d)) return 'expense';
+        if (/给.{1,4}(?:买|购|送)了/.test(d)) return 'expense';
+        if (/(?:请|带).{1,4}(?:吃|喝|玩)/.test(d)) return 'expense';
+        if (/打车.{0,4}\d/.test(d)) return 'expense';
+        if (/(?:充|缴|扣).*(?:值|费|款)/.test(d)) return 'expense';
+
+        // 支出语境关键词（强信号）
+        var expenseKeywords = [
+            '买了', '花了', '付了', '消费', '吃了', '喝了', '打车', '加油', '交了',
+            '支付了', '购买了', '支出', '开销', '花费', '付款', '充值', '缴费', '还贷',
+            '还信用卡', '扣款', '扣费', '买了个', '买了只', '买了件', '买了个', '叫外卖',
+            '点外卖', '下馆子', '逛街', '买菜', '交房租', '交水电'
+        ];
+        for (var j = 0; j < expenseKeywords.length; j++) {
+            if (d.indexOf(expenseKeywords[j]) !== -1) return 'expense';
+        }
+
+        // 检查自定义分类关键词
+        for (var k = 0; k < this.customCategories.length; k++) {
+            var cat = this.customCategories[k];
+            if (cat.keywords && cat.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) {
+                return cat.type || 'expense';
+            }
+        }
+
+        // 检查默认分类关键词
+        var keys = Object.keys(this.defaultCategories);
+        for (var m = 0; m < keys.length; m++) {
+            var name = keys[m];
+            var cfg = this.defaultCategories[name];
+            if (cfg.keywords && cfg.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) {
+                return cfg.type || 'expense';
+            }
+        }
+
+        // 默认支出
+        return 'expense';
+    }
+
+    // 语义分析：自动分类
+    analyzeCategory(text, type) {
+        var d = text.toLowerCase();
+
+        // 优先检查自定义分类
         for (var i = 0; i < this.customCategories.length; i++) {
             var cat = this.customCategories[i];
             if (cat.keywords && cat.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) {
                 return cat.name;
             }
         }
+
+        // 检查默认分类
+        var bestMatch = null;
+        var bestScore = 0;
+
         var keys = Object.keys(this.defaultCategories);
         for (var j = 0; j < keys.length; j++) {
             var name = keys[j];
             var cfg = this.defaultCategories[name];
-            if (this.customCategories.some(function(c) { return c.name === name; })) continue;
-            if (cfg.keywords && cfg.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) {
-                return name;
+
+            // 如果指定了类型，只匹配同类型的分类
+            if (type && cfg.type !== type) continue;
+
+            // 计算匹配分数
+            var score = 0;
+            if (cfg.keywords) {
+                for (var k = 0; k < cfg.keywords.length; k++) {
+                    if (d.indexOf(cfg.keywords[k]) !== -1) {
+                        score += 1;
+                    }
+                }
+            }
+
+            // 上下文匹配：检查分类名称是否在文本中
+            if (d.indexOf(name.toLowerCase()) !== -1) score += 2;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = name;
             }
         }
-        return '其他';
+
+        return bestMatch || '其他';
     }
 
-    isIncome(desc) {
-        var d = desc.toLowerCase();
-        // 收入专属关键词
-        var incomeKeywords = ['收入','工资','奖金','兼职','礼金','投资','退款','报销','分红','到账','收到','转账','红包','补贴','津贴','稿费','租金','利息','理财','回款','中奖','返现','返利','提成','副业','外快'];
-        for (var i = 0; i < incomeKeywords.length; i++) {
-            if (d.indexOf(incomeKeywords[i]) !== -1) return true;
+    // 提取备注信息（智能保留时间/地点/人物）
+    extractNote(text, amountStr, category) {
+        var note = text;
+
+        // 1. 去掉金额部分（阿拉伯数字 + 中文数字）
+        if (amountStr) note = note.replace(amountStr, '');
+        note = note.replace(/(\d+\.?\d*\s*(块|元|￥|¥|圆|毛|分)?)/g, '');
+        note = note.replace(/(零|一|二|三|四|五|六|七|八|九|十|百|千|万|两)+(块|元|圆|毛|分)?/g, '');
+
+        // 2. 去掉分类名称本身
+        if (category) {
+            note = note.replace(new RegExp(category, 'gi'), '');
         }
-        // 支出专属关键词（明确表示支出的）
-        var expenseKeywords = ['买了','花了','支付','消费','购买','支出','开销','花费','付款','充值','缴费','还贷','还信用卡','扣款','扣费'];
-        for (var j = 0; j < expenseKeywords.length; j++) {
-            if (d.indexOf(expenseKeywords[j]) !== -1) return false;
+
+        // 3. 去掉分类关键词（但保留不在备注语境中的）
+        var cat = this.categories[category];
+        if (cat && cat.keywords) {
+            for (var i = 0; i < cat.keywords.length; i++) {
+                // 只去掉精确匹配的关键词，保留包含该词的短语
+                var kw = cat.keywords[i];
+                if (kw.length >= 2) {
+                    note = note.replace(new RegExp(kw, 'g'), '');
+                }
+            }
         }
-        // 检查自定义收入分类关键词
-        for (var k = 0; k < this.customCategories.length; k++) {
-            var cat = this.customCategories[k];
-            if (cat.type === 'income' && cat.keywords && cat.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) return true;
+
+        // 4. 去掉核心动词（买/花/付/吃/喝等），但保留动词后的宾语语境
+        var coreVerbs = ['买了', '买了个', '买了只', '买了件', '花了', '付了', '支付了', '消费了',
+                         '吃了', '喝了', '打了', '坐了', '交了', '充了', '缴了', '购买了',
+                         '支出', '花费', '付款', '充值', '缴费', '还贷', '还信用卡'];
+        for (var j = 0; j < coreVerbs.length; j++) {
+            note = note.replace(new RegExp(coreVerbs[j], 'g'), '');
         }
-        // 检查默认收入分类关键词
-        var keys = Object.keys(this.defaultCategories);
-        for (var m = 0; m < keys.length; m++) {
-            var name = keys[m];
-            var cfg = this.defaultCategories[name];
-            if (this.customCategories.some(function(c) { return c.name === name; })) continue;
-            if (cfg.type === 'income' && cfg.keywords && cfg.keywords.some(function(kw) { return d.indexOf(kw) !== -1; })) return true;
-        }
-        return false;
+
+        // 5. 去掉金额单位词
+        note = note.replace(/[块元圆毛分￥¥]/g, '');
+
+        // 6. 清理多余空格和标点
+        note = note.replace(/\s+/g, ' ').trim();
+        note = note.replace(/^[,，、的了的吗呢吧啊嗯哦]+/, '');
+        note = note.replace(/[,，、的了的吗呢吧啊嗯哦]+$/, '');
+
+        // 7. 如果备注太长，截断
+        if (note.length > 50) note = note.substring(0, 50) + '...';
+
+        return note || '';
     }
 
     previewInput(input) {
@@ -444,6 +616,7 @@ class AccountingApp {
             var cfg = this.categories[record.category] || this.categories['其他'];
             var typeLabel = record.type === 'income' ? '收入' : '支出';
             var typeColor = record.type === 'income' ? 'var(--income)' : 'var(--expense)';
+            var noteHtml = record.note ? '<div class="preview-note" title="' + record.note + '">备注：' + record.note + '</div>' : '';
             preview.innerHTML = '<div class="preview-row">' +
                 '<span class="preview-icon">' + cfg.icon + '</span>' +
                 '<div class="preview-info">' +
@@ -451,7 +624,8 @@ class AccountingApp {
                     '<div class="preview-amount ' + record.type + '">' +
                         (record.type === 'expense' ? '-' : '+') + Math.abs(record.amount).toFixed(2) +
                     '</div>' +
-                    '<div class="preview-cat">分类：' + record.category + ' · <span style="color:' + typeColor + ';font-weight:600">' + typeLabel + '</span></div>' +
+                    '<div class="preview-cat">' + cfg.icon + ' ' + record.category + ' · <span style="color:' + typeColor + ';font-weight:600">' + typeLabel + '</span></div>' +
+                    noteHtml +
                 '</div>' +
             '</div>';
             preview.classList.remove('hidden');
@@ -900,26 +1074,199 @@ class AccountingApp {
 
     // ========== 语音输入 ==========
     checkVoiceSupport() {
+        var btn = document.getElementById('voice-btn');
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            document.getElementById('voice-btn').style.display = 'none';
+            btn.disabled = true;
+            btn.classList.add('disabled');
+            btn.title = '浏览器不支持语音识别';
+            btn.style.opacity = '0.35';
         }
     }
 
     startVoiceInput() {
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) { alert('请使用 Chrome 浏览器'); return; }
+        if (!SR) { this.showVoiceTip('浏览器不支持语音识别'); return; }
+
+        // 如果正在录音，则停止
+        if (this._rec) { this._rec.stop(); return; }
+
         var rec = new SR();
-        rec.lang = 'zh-CN'; rec.continuous = false; rec.interimResults = false;
-        var btn = document.getElementById('voice-btn'); btn.classList.add('recording');
+        rec.lang = 'zh-CN';
+        rec.continuous = true;
+        rec.interimResults = true;
+
+        var btn = document.getElementById('voice-btn');
+        var statusEl = document.getElementById('recording-status');
+        var previewEl = document.getElementById('recording-preview');
+        var waveEl = document.getElementById('recording-wave');
+        var cardEl = document.getElementById('input-card');
+        var inputEl = document.getElementById('input-field');
+
+        // 进入录音状态：按钮变红 + 脉冲动画
+        btn.classList.add('recording');
+        statusEl.classList.remove('hidden');
+        previewEl.textContent = '';
+        waveEl.classList.remove('hidden');
+        cardEl.classList.add('recording-active');
+        inputEl.classList.add('voice-preview-text');
+
+        // 创建大字提示
+        var bannerEl = document.createElement('div');
+        bannerEl.className = 'recording-banner';
+        bannerEl.id = 'recording-banner';
+        bannerEl.textContent = '正在聆听...';
+        // 插入到 input-card 的第一个子元素位置（wave 之后）
+        var inputRow = cardEl.querySelector('.input-row');
+        cardEl.insertBefore(bannerEl, inputRow);
+
+        // 创建底部浮层
+        var overlayEl = document.createElement('div');
+        overlayEl.className = 'recording-overlay';
+        overlayEl.id = 'recording-overlay';
+        overlayEl.textContent = '请说话...';
+        document.body.appendChild(overlayEl);
+
         var self = this;
+        var finalTranscript = '';
+        var silenceTimer = null;
+
+        // 重置静音计时器：3 秒无语音自动停止
+        function resetSilenceTimer() {
+            if (silenceTimer) clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(function() {
+                if (self._rec) {
+                    self._rec.stop();
+                }
+            }, 3000);
+        }
+
+        // 波形动画随机跳动
+        var waveInterval = setInterval(function() {
+            var bars = waveEl.querySelectorAll('.wave-bar');
+            bars.forEach(function(bar) {
+                var randomH = 4 + Math.random() * 16;
+                bar.style.height = randomH + 'px';
+            });
+        }, 150);
+
         rec.onresult = function(e) {
-            var t = e.results[0][0].transcript;
-            document.getElementById('input-field').value = t;
-            self.previewInput(t);
+            resetSilenceTimer();
+            var interim = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                var transcript = e.results[i][0].transcript;
+                if (e.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interim += transcript;
+                }
+            }
+            var display = finalTranscript + interim;
+            if (display.trim()) {
+                // 实时显示灰色斜体预览文字在输入框
+                inputEl.value = display;
+                inputEl.classList.add('voice-preview-text');
+                // 实时显示在 recording-preview 区域
+                previewEl.textContent = display;
+                // 实时语义分析预览
+                var analyzed = self.parseInput(display);
+                if (analyzed) {
+                    var cfg = self.categories[analyzed.category] || self.categories['其他'];
+                    var typeLabel = analyzed.type === 'income' ? '收入' : '支出';
+                    var typeColor = analyzed.type === 'income' ? 'var(--income)' : 'var(--expense)';
+                    var noteHtml = analyzed.note ? '<div class="preview-note" title="' + analyzed.note + '">备注：' + analyzed.note + '</div>' : '';
+                    document.getElementById('preview').innerHTML = '<div class="preview-row">' +
+                        '<span class="preview-icon">' + cfg.icon + '</span>' +
+                        '<div class="preview-info">' +
+                            '<div class="preview-desc">' + analyzed.desc + '</div>' +
+                            '<div class="preview-amount ' + analyzed.type + '">' +
+                                (analyzed.type === 'expense' ? '-' : '+') + Math.abs(analyzed.amount).toFixed(2) +
+                            '</div>' +
+                            '<div class="preview-cat">' + cfg.icon + ' ' + analyzed.category + ' · <span style="color:' + typeColor + ';font-weight:600">' + typeLabel + '</span></div>' +
+                            noteHtml +
+                        '</div>' +
+                    '</div>';
+                    document.getElementById('preview').classList.remove('hidden');
+                    // 实时更新录音状态文字
+                    document.querySelector('.recording-text').textContent = '已识别 · ' + analyzed.category;
+                }
+            } else {
+                previewEl.textContent = '...';
+                document.querySelector('.recording-text').textContent = '正在聆听...';
+            }
         };
-        rec.onerror = function(e) { if (e.error === 'not-allowed') alert('请允许麦克风权限'); };
-        rec.onend = function() { btn.classList.remove('recording'); };
-        rec.start();
+
+        rec.onerror = function(e) {
+            if (silenceTimer) clearTimeout(silenceTimer);
+            if (waveInterval) clearInterval(waveInterval);
+            if (e.error === 'not-allowed') {
+                self.showVoiceTip('请允许麦克风权限');
+            } else if (e.error === 'network') {
+                self.showVoiceTip('网络异常，请稍后重试');
+            }
+        };
+
+        rec.onend = function() {
+            if (silenceTimer) clearTimeout(silenceTimer);
+            if (waveInterval) clearInterval(waveInterval);
+
+            // 退出录音状态：移除红色样式
+            btn.classList.remove('recording');
+            statusEl.classList.add('hidden');
+            previewEl.textContent = '';
+            waveEl.classList.add('hidden');
+            cardEl.classList.remove('recording-active');
+            inputEl.classList.remove('voice-preview-text');
+
+            // 移除大字提示
+            var banner = document.getElementById('recording-banner');
+            if (banner) banner.remove();
+
+            // 移除底部浮层
+            var overlay = document.getElementById('recording-overlay');
+            if (overlay) overlay.remove();
+
+            self._rec = null;
+
+            // 录音结束后自动填入输入框并触发分类判断
+            if (finalTranscript.trim()) {
+                inputEl.value = finalTranscript.trim();
+                self.previewInput(finalTranscript.trim());
+            } else {
+                inputEl.value = '';
+            }
+        };
+
+        this._rec = rec;
+        resetSilenceTimer();
+        try {
+            rec.start();
+        } catch (ex) {
+            if (silenceTimer) clearTimeout(silenceTimer);
+            if (waveInterval) clearInterval(waveInterval);
+            btn.classList.remove('recording');
+            statusEl.classList.add('hidden');
+            waveEl.classList.add('hidden');
+            cardEl.classList.remove('recording-active');
+            inputEl.classList.remove('voice-preview-text');
+            var banner = document.getElementById('recording-banner');
+            if (banner) banner.remove();
+            var overlay = document.getElementById('recording-overlay');
+            if (overlay) overlay.remove();
+            self._rec = null;
+        }
+    }
+
+    showVoiceTip(msg) {
+        var preview = document.getElementById('preview');
+        preview.innerHTML = '<div style="color:var(--expense);font-size:14px;">' + msg + '</div>';
+        preview.classList.remove('hidden');
+        var self = this;
+        setTimeout(function() {
+            var div = preview.querySelector('div');
+            if (div && div.textContent === msg) {
+                preview.classList.add('hidden');
+            }
+        }, 3000);
     }
 
     // 图标选择器数据源（20+ 常用分类图标）

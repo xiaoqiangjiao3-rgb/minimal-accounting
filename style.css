@@ -83,98 +83,213 @@ body {
     flex-direction: column;
 }
 
-/* ========== 记账 Tab ========== */
+/* ========== 记账 Tab · 极简语音整合 ========== */
+
+/* 录音波形动画条 */
+.recording-wave {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: linear-gradient(90deg, #FF3B30, #FF6B6B, #FF3B30);
+    box-shadow: 0 2px 14px rgba(255, 59, 48, 0.5), 0 0 6px rgba(255, 59, 48, 0.3);
+    animation: waveSlideIn 0.3s ease;
+    z-index: 10;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.recording-wave.hidden {
+    display: none;
+}
+
+.wave-bar {
+    width: 2px;
+    min-height: 4px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 1px;
+    animation: waveJump 0.6s ease-in-out infinite;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.wave-bar:nth-child(1) { animation-delay: 0s; }
+.wave-bar:nth-child(2) { animation-delay: 0.07s; }
+.wave-bar:nth-child(3) { animation-delay: 0.14s; }
+.wave-bar:nth-child(4) { animation-delay: 0.21s; }
+.wave-bar:nth-child(5) { animation-delay: 0.28s; }
+.wave-bar:nth-child(6) { animation-delay: 0.35s; }
+.wave-bar:nth-child(7) { animation-delay: 0.42s; }
+.wave-bar:nth-child(8) { animation-delay: 0.49s; }
+.wave-bar:nth-child(9) { animation-delay: 0.56s; }
+.wave-bar:nth-child(10) { animation-delay: 0.63s; }
+.wave-bar:nth-child(11) { animation-delay: 0.70s; }
+.wave-bar:nth-child(12) { animation-delay: 0.77s; }
+
+@keyframes waveJump {
+    0%, 100% { height: 4px; opacity: 0.5; }
+    50% { height: 16px; opacity: 1; }
+}
+
+@keyframes waveSlideIn {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* 录音时 input-card 样式 */
+.input-card.recording-active {
+    border-color: #FF3B30;
+    box-shadow: 0 0 12px rgba(255, 59, 48, 0.3);
+    animation: borderBreath 1.8s ease-in-out infinite;
+}
+
+@keyframes borderBreath {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 59, 48, 0.2); border-color: rgba(255, 59, 48, 0.6); }
+    50% { box-shadow: 0 0 22px rgba(255, 59, 48, 0.5); border-color: #FF3B30; }
+}
+
+/* 录音时输入框样式 */
+.input-card.recording-active .apple-input {
+    border-color: rgba(255, 59, 48, 0.5);
+    color: #FF3B30;
+    background: rgba(255, 59, 48, 0.02);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+/* 录音实时预览文字（输入框内） */
+.voice-preview-text {
+    color: #AEAEB2 !important;
+    font-style: italic !important;
+    transition: color 0.3s ease;
+}
+
+/* 录音状态提示 - 整合到输入卡片内 */
+.recording-status {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.04), rgba(255, 149, 0, 0.04));
+    border-radius: var(--radius-sm);
+    animation: fadeSlideIn 0.25s ease;
+}
+
+/* 录音大字提示 */
+.recording-banner {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #FF3B30;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    animation: bannerPulse 1.8s ease-in-out infinite;
+    letter-spacing: 3px;
+    text-shadow: 0 0 8px rgba(255, 59, 48, 0.25);
+}
+
+@keyframes bannerPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.04); }
+}
+
+/* 录音实时预览文字（输入框内） */
+.voice-preview-text {
+    color: #AEAEB2 !important;
+    font-style: italic !important;
+}
+
+/* 底部录音浮层提示 */
+.recording-overlay {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 59, 48, 0.92);
+    color: #FFF;
+    padding: 10px 28px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    box-shadow: 0 4px 20px rgba(255, 59, 48, 0.35), 0 0 12px rgba(255, 59, 48, 0.2);
+    animation: overlayFade 0.4s ease, overlayPulse 2s ease-in-out 0.4s infinite;
+    z-index: 1000;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.recording-overlay.hidden {
+    display: none;
+}
+
+@keyframes overlayFade {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes overlayPulse {
+    0%, 100% { box-shadow: 0 4px 20px rgba(255, 59, 48, 0.35), 0 0 12px rgba(255, 59, 48, 0.2); }
+    50% { box-shadow: 0 4px 30px rgba(255, 59, 48, 0.5), 0 0 18px rgba(255, 59, 48, 0.35); }
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FF3B30;
+    animation: recordingBlink 1s ease-in-out infinite;
+}
+
+@keyframes recordingBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.recording-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #FF3B30;
+    letter-spacing: 0.3px;
+}
+
+.recording-preview {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 20px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    border-left: 3px solid #007AFF;
+}
+
+/* ========== 输入卡片 ========== */
 .input-card {
     margin: 0 20px 20px;
     background: var(--card);
     border-radius: var(--radius-md);
-    padding: 20px;
+    padding: 12px 20px 20px;
     box-shadow: var(--shadow-sm);
-}
-
-.input-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.apple-input {
-    flex: 1;
-    height: 48px;
-    padding: 0 18px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 17px;
-    font-family: var(--font);
-    color: var(--text);
-    background: var(--bg);
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.apple-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
-}
-
-.apple-input::placeholder {
-    color: var(--text-tertiary);
-}
-
-.icon-btn {
-    width: 48px;
-    height: 48px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.icon-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.icon-btn.recording {
-    border-color: var(--expense);
-    color: var(--expense);
-    background: #FFF0EF;
-}
-
-.submit-btn {
-    width: 48px;
-    height: 48px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--accent);
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.submit-btn:hover {
-    background: #0066D6;
-    transform: scale(1.04);
-}
-
-.submit-btn:active {
-    transform: scale(0.96);
+    border: 1.5px solid transparent;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 /* 收入/支出切换 */
 .type-toggle-row {
     display: flex;
     gap: 8px;
+    margin-top: 12px;
     margin-bottom: 14px;
 }
 
@@ -212,6 +327,141 @@ body {
     border-color: var(--income);
     background: #E8F2FE;
     color: var(--income);
+}
+
+/* 输入行 - 整合语音+设置图标 */
+.input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* 极简内联语音按钮 */
+.voice-btn-inline {
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.voice-btn-inline .mic-icon {
+    transition: color 0.2s ease;
+}
+
+.voice-btn-inline:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+.voice-btn-inline:active {
+    transform: scale(0.94);
+}
+
+/* 录音状态 - 麦克风变红 */
+.voice-btn-inline.recording {
+    border-color: #FF3B30;
+    background: rgba(255, 59, 48, 0.08);
+    color: #FF3B30;
+    animation: micPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(255, 59, 48, 0);
+    }
+}
+
+.voice-btn-inline:disabled,
+.voice-btn-inline.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* 极简内联设置按钮 */
+.settings-btn-inline {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.settings-btn-inline:hover {
+    color: var(--text);
+    background: var(--bg);
+    transform: rotate(45deg);
+}
+
+.settings-btn-inline:active {
+    transform: scale(0.92);
+}
+
+.apple-input {
+    flex: 1;
+    height: 44px;
+    padding: 0 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 17px;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.apple-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+.apple-input::placeholder {
+    color: var(--text-tertiary);
+    font-size: 15px;
+}
+
+.submit-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.submit-btn:hover {
+    background: #0066D6;
+    transform: scale(1.04);
+}
+
+.submit-btn:active {
+    transform: scale(0.96);
 }
 
 /* 预览区 */
@@ -266,6 +516,19 @@ body {
     margin-top: 2px;
 }
 
+.preview-note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    padding: 3px 8px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
 /* 快速分类 */
 .quick-cats {
     display: flex;
@@ -298,12 +561,6 @@ body {
     border-color: var(--accent);
     background: var(--accent-light);
     color: var(--accent);
-}
-
-/* 记录列表 */
-.records-section {
-    margin: 0 20px;
-    flex: 1;
 }
 
 .section-label {
@@ -612,11 +869,13 @@ body {
 }
 
 .chat-text ul {
-    margin: 6px 0 6px 18px;
+    margin: 6px 0;
+    padding-left: 18px;
 }
 
 .chat-text li {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    line-height: 1.5;
 }
 
 .chat-text .highlight-good {
@@ -929,48 +1188,7 @@ body {
     text-align: right;
 }
 
-/* ========== 快速分类行 ========== */
-.quick-cats-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-}
-
-.quick-cats {
-    display: flex;
-    gap: 8px;
-    flex: 1;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-}
-
-.quick-cats::-webkit-scrollbar { display: none; }
-
-.manage-cats-btn {
-    width: 34px;
-    height: 34px;
-    flex-shrink: 0;
-    margin-top: 0;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-    color: var(--text-secondary);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.manage-cats-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: var(--accent-light);
-}
-
-/* ========== 分类管理模态框 ========== */
+/* ========== 响应式补充 ========== */
 .cat-modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -1314,29 +1532,51 @@ body {
     .chart-filter-row { padding: 6px 14px 2px; }
     .period-label { min-width: 90px; font-size: 14px; }
     .cat-modal { max-height: 85vh; }
-}
 
-/* ========== 设置齿轮按钮 ========== */
-.settings-gear {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: transparent;
-    font-size: 22px;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
+    .apple-input {
+        font-size: 16px;
+    }
 
-.settings-gear:hover {
-    color: var(--text);
-    background: var(--bg);
-    transform: rotate(45deg);
+    .apple-input::placeholder {
+        font-size: 14px;
+    }
+
+    .input-card {
+        margin: 0 14px 16px;
+        padding: 12px 16px 16px;
+    }
+
+    .voice-btn-inline {
+        width: 38px;
+        height: 38px;
+    }
+
+    .voice-btn-inline .mic-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .settings-btn-inline {
+        width: 32px;
+        height: 32px;
+    }
+
+    .settings-btn-inline svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .cat-chip {
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+    }
+
+    .submit-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
 }
 
 /* ========== 设置面板 ========== */
